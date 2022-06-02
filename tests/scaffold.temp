@@ -1,0 +1,35 @@
+#/scaffold
+
+(defun create-order (user order)
+  (handler-case 
+      (retrieve-one
+       (insert-into :orders
+         (set= :user user
+               :order order               
+               :created_at (local-time:now)
+               :updated_at (local-time:now))
+         (returning :order)))
+    (error (e) e)))
+
+(defun change-order (user order)
+  (handler-case
+      (retrieve-one
+       (update :orders
+         (set= :order order
+               :updated_at (local-time:now))
+         (where (:= :user user))
+         (returning :order)))
+    (error (e) e)))
+
+#/users
+
+(defun create-user (name password)
+  (handler-case 
+      (retrieve-one
+       (insert-into :users
+         (set= :name name
+               :password password               
+               :created_at (local-time:now)
+               :updated_at (local-time:now))
+         (returning :id)))
+    (error (e) e)))
