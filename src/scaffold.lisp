@@ -6,7 +6,9 @@
 
 (in-package :scaffold)
 
-(defparameter *specials* '(("#/" . in-file)))
+(defparameter *specials* '(("#/" . in-file) ("#:" . set-binds)))
+(defparameter *binds* nil)
+(defparameter *shapers* '(#\: #\-))
 (defvar *file* nil)
 (defvar *project-root* nil)
 
@@ -23,42 +25,50 @@
 
 (defun in-file (file)
   (when (dirp file)
-    (print (mkdir (relative-path (upper-directory file)))))
-  (print (setf *file* (relative-path file))))
+    (mkdir (relative-path (upper-directory file))))
+  (setf *file* (relative-path file)))
 
-(defun scaffold (string binds)
+(defun set-binds (binds)
+  (setf *binds* (read-from-string binds)))
+
+(defun shaper (char)
+  (some #'(lambda (c) (char= char c)) *shapers*))
+
+(defun scaffold (string)
   (let ((result ""))
     (loop for c across string
           with word = (defword)
-          if (alphanumericp c)
+          if (or (alphanumericp c) (shaper c))
             do (vector-push-extend c word)
           else
             do (progn
-                 (concat result (or (bind word binds) word) (string c))
-                 (setf word (defword))))    
+                 (concat result (when (string/= word "") (or (bind word) word)) (string c))
+                 (setf word (defword)))
+          finally (concat result (or (bind word) word)))    
     result))
 
-(defun bind(word binds)
-  (cdr (assoc (intern (string-upcase word)) binds)))
+(defun bind (word)
+  (cdr (assoc word *binds* :test #'string=)))
 
 (defun read-template (file)
   (set-root)
-  (handler-case       
-      (with-open-file (stream "~/test/scaffold.temp")
+;  (handler-case       
+      (with-open-file (stream file)
         (loop for line = (read-line stream nil)
               while line
               if (parse-line line)
-                do (write-template line nil)))
-    (error (e) (print e))))
+                do (write-template line)))
+  ;(error (e) (print e))
+  )
 
 (defun parse-line (line)
-  (let* ((l (cl-ppcre:split "\\s" line))
-         (special (cdr (assoc (car l) *specials* :test #'string=))))
+  (let* ((l (nth-value 1 (cl-ppcre:scan-to-strings "(^.*?)\\s(.*)" line)))
+         (special (when l (cdr (assoc (elt l 0) *specials* :test #'string=)))))
     (if special
-        (progn (funcall special (cadr l))
+        (progn (funcall special (elt l 1))
                nil)
         line)))
 
-(defun write-template (template binds)
+(defun write-template (template)
   (with-open-file (stream *file* :direction :output :if-exists :append :if-does-not-exist :create)
-  (format stream "~&~a~%" (scaffold template binds))))
+  (format stream "~&~a~%" (scaffold template))))
