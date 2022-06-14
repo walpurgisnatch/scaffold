@@ -1,6 +1,13 @@
 (in-package :cl-user)
 (defpackage scaffold.utils
-  (:use :cl))
+  (:use :cl)
+  (:export :defword
+           :ls
+           :upper-directory
+           :dirp
+           :mkdir
+           :merge-with-dir
+           :concat))
 
 (in-package :scaffold.utils)
 
@@ -12,6 +19,15 @@
 
 (defmacro concat (string &rest words)
   `(setf ,string (concatenate 'string ,string ,@words)))
+
+(defun directory-wildcard (dir)
+  (make-pathname
+   :name :wild
+   :type :wild
+   :defaults (pathname-as-directory dir)))
+
+(defun component-present-p (value)
+  (and value (not (eql value :unspecific))))
 
 (defun directory-pathname-p  (p)
     (and
@@ -31,6 +47,18 @@
              :type      nil
              :defaults pathname)
             pathname)))
+
+(defun ls (&optional directory)
+  (let ((dir (or directory ".")))
+    (when (wild-pathname-p dir)
+      (error "Wildcard not supported"))
+    (directory (directory-wildcard dir))))
+
+(defun dirp (path)
+  (find #\/ path))
+
+(defun upper-directory (&optional directory)
+  (elt (nth-value 1 (cl-ppcre:scan-to-strings "(.*/).+$" (namestring (or directory (uiop/os:getcwd))))) 0))
 
 (defun mkdir (dir &optional parent)
     (namestring (ensure-directories-exist
