@@ -1,4 +1,16 @@
-#/scaffold
+#/ test/items.lisp
+#: name &vars &functions
+
+(defun create-order (user order)
+  (handler-case 
+      (retrieve-one
+       (insert-into :orders
+         (set= #<for arg in vars
+               :arg arg>#
+               :created_at (local-time:now)
+               :updated_at (local-time:now))
+         (returning :order)))
+    (error (e) e)))
 
 (defun create-order (user order)
   (handler-case 
@@ -21,7 +33,7 @@
          (returning :order)))
     (error (e) e)))
 
-#/users
+#/ test/users.lisp
 
 (defun create-user (name password)
   (handler-case 
