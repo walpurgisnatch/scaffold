@@ -62,35 +62,25 @@
             do (vector-push-extend c word)
           else
             do (progn
-                 (concat result (when (string/= word "") (or (bind word binds) word)) (string c))
+                 (concat result (when (string/= word "") (or (bind word) word)) (string c))
                  (setf word (defword)))
-          finally (concat result (or (bind word binds) word)))
+          finally (concat result (or (bind word) word)))
     result))
 
 (defun bind (word &optional (binds *binds*))
   (let ((w (nth-value 1 (cl-ppcre:scan-to-strings "##(.*)" word))))
-      (if w
-          (cdr (assoc (elt w 0) binds :test #'string=))
-          word)))
+    (if w
+        (cdr (assoc (elt w 0) binds :test #'string=))
+        word)))
 
 (defun read-template (file args)
   (set-root)
   (setf *args* (brake-words args))
-;  (handler-case       
       (with-open-file (stream file)
         (loop for line = (read-line stream nil)
               while line
               if (parse-line line)
-                do (write-template (parse-line line))))
-  ;(error (e) (print e))
-  )
-
-(defun loop-for (line)
-  (let* ((destruct (nth-value 1 (cl-ppcre:scan-to-strings "#<for (.*?) in (.*)" line)))
-         (v (elt destruct 0))
-         (vars (elt destruct 1)))
-    (loop for var in (bind (concatenate 'string "##" vars))
-          do (scaffold line (acons v vars nil)))))
+                do (write-template (parse-line line)))))
 
 (defun parse-line (line)
   (let* ((l (nth-value 1 (cl-ppcre:scan-to-strings "(^.*?)\\s(.*)" line)))
