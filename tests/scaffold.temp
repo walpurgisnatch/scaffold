@@ -1,23 +1,11 @@
-#/ test/items.lisp
 #: name &vars &functions
+#/ test/items.lisp
 
-(defun create-order (user order)
+(defun create-order (##name order)
   (handler-case 
       (retrieve-one
-       (insert-into :orders
-         (set= #<for arg in vars
-               :arg arg>#
-               :created_at (local-time:now)
-               :updated_at (local-time:now))
-         (returning :order)))
-    (error (e) e)))
-
-(defun create-order (user order)
-  (handler-case 
-      (retrieve-one
-       (insert-into :orders
-         (set= :user user
-               :order order               
+       (insert-into :##name
+         (set= #< ~{:~a~:* ~a~^~%~} &vars >#
                :created_at (local-time:now)
                :updated_at (local-time:now))
          (returning :order)))
@@ -35,11 +23,12 @@
 
 #/ test/users.lisp
 
-(defun create-user (name password)
+(defun create-user (##name password)
   (handler-case 
       (retrieve-one
        (insert-into :users
-         (set= :name name
+         (set= :name ##name
+               #< ~{:~a~:* ~a~^~%~} &functions >#
                :password password               
                :created_at (local-time:now)
                :updated_at (local-time:now))
