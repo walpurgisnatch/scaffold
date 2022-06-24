@@ -1,6 +1,7 @@
 # Scaffold - Simple scaffolder
 
 ## Usage
+`scaffold template args`
 
 ## Installation
 
