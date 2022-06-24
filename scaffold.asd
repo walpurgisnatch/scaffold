@@ -1,5 +1,5 @@
 (defsystem "scaffold"
-  :version "0.1.0"
+  :version "0.7.0"
   :author "Walpurgisnatch"
   :license "MIT"
   :depends-on ("pero"
