@@ -76,27 +76,33 @@
 (defun read-template (file args)
   (set-root)
   (setf *args* (brake-words args))
-      (with-open-file (stream file)
-        (loop for line = (read-line stream nil)
-              while line
-              if (parse-line line)
-                do (write-template (parse-line line)))))
+  (with-open-file (stream file)
+    (loop for line = (read-line stream nil)
+          while line
+          if (parse-line line)
+            do (write-template (parse-line line)))))
 
 (defun parse-line (line)
   (let* ((l (nth-value 1 (cl-ppcre:scan-to-strings "(^.*?)\\s(.*)" line)))
          (special (when l (cdr (assoc (elt l 0) *specials* :test #'string=))))
-         (sblock (nth-value 1 (cl-ppcre:scan-to-strings "(.*?)#<.*(~{.*?~})(.*)>#" line)))
+         (sblock (nth-value 1 (cl-ppcre:scan-to-strings "(.*?)#<.*(~{.*?~})(.*)>#(.*)" line)))
          (block-binds-strings (when sblock (cl-ppcre:all-matches-as-strings "&[^\\s]*" (elt sblock 2))))
          (block-binds (loop for bind in block-binds-strings
                             collect (cdr (assoc (subseq bind 1) *binds* :test #'string=)))))
-    (if sblock (concatenate 'string
-                            (elt sblock 0)
-                            (format nil (concatenate 'string "~{" (elt sblock 1) "~}") block-binds))
+    (if sblock (format-string (elt sblock 0) (elt sblock 1) block-binds (elt sblock 3))
         (if special
             (progn (funcall special (elt l 1))
                    nil)
             line))))
 
+(defun format-string (beg block vars end)
+  (let* ((ident (length beg))
+        (string (cl-ppcre:regex-replace-all "~%" block (format nil "~%~va" ident " "))))
+    (concatenate 'string
+                 beg
+                 (format nil (concatenate 'string "~{" string "~}") vars)
+                 end)))
+
 (defun write-template (template)
   (with-open-file (stream *file* :direction :output :if-exists :append :if-does-not-exist :create)
-  (format stream "~&~a~%" (scaffold template))))
+    (format stream "~&~a~%" (scaffold template))))
