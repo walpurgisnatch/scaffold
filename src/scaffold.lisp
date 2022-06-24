@@ -75,7 +75,7 @@
 
 (defun read-template (file args)
   (set-root)
-  (setf *args* (brake-words args))
+  (setf *args* args)
   (with-open-file (stream file)
     (loop for line = (read-line stream nil)
           while line
