@@ -12,6 +12,13 @@
 (defparameter *shapers* '(#\: #\- #\#))
 (defvar *file* nil)
 (defvar *project-root* nil)
+(defvar *config* "~/.config/scaffold/config.lisp")
+(defvar *templates* "~/templates/")
+
+(defun find-template (name)
+  (loop for template in (ls *templates*)
+        if (search name (namestring template))
+          return template))
 
 (defun set-root (&optional dir)
   (handler-case 

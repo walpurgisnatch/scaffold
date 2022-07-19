@@ -15,7 +15,7 @@ exec ros -Q -- $0 "$@"
 (defun main (template &rest argv)
   (declare (ignorable argv))
   (handler-case
-      (scaffold:read-template template argv)
+      (scaffold:read-template (scaffold:find-template template) argv)
     (error (e)
       (format *standard-output* "~&Error: ~A~%" e)
       (uiop:quit -1))))
