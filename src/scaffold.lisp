@@ -2,7 +2,8 @@
 (defpackage scaffold
   (:use :cl
    :scaffold.utils)
-  (:export :read-template))
+  (:export :read-template
+           :find-template))
 
 (in-package :scaffold)
 
@@ -19,6 +20,14 @@
   (loop for template in (ls *templates*)
         if (search name (namestring template))
           return template))
+
+(defun read-config ()
+  (setf *templates*
+        (with-open-file (config *config*)
+          (elt
+           (nth-value 1 (cl-ppcre:scan-to-strings "templates_path: (.*)"
+                                                  (read-line config)))
+           0))))
 
 (defun set-root (&optional dir)
   (handler-case 
@@ -81,6 +90,7 @@
         word)))
 
 (defun read-template (file args)
+  (read-config)
   (set-root)
   (setf *args* args)
   (with-open-file (stream file)
