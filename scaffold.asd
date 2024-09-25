@@ -8,6 +8,7 @@
                 :serial t
                 :components
                 ((:file "utils")
+                 (:file "parser")
                  (:file "scaffold"))))
   :description "Simple scaffolder"
   :in-order-to ((test-op (test-op "scaffold/tests"))))
