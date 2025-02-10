@@ -3,7 +3,8 @@
   :author "Walpurgisnatch"
   :license "MIT"
   :depends-on ("pero"
-               "cl-ppcre")
+               "cl-ppcre"
+               "alexandria")
   :components ((:module "src"
                 :serial t
                 :components
@@ -12,3 +13,11 @@
                  (:file "scaffold"))))
   :description "Simple scaffolder"
   :in-order-to ((test-op (test-op "scaffold/tests"))))
+
+(defsystem "scaffold/tests"
+  :depends-on ("fiveam"
+               "scaffold")
+  :components ((:module "tests"
+                :components
+                ((:file "main"))))
+  :perform (test-op (o c) (symbol-call :fiveam '#:run! (find-symbol* :scaffold :scaffold/tests/main))))

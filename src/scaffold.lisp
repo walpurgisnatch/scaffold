@@ -11,10 +11,11 @@
 
 (defparameter *settings* nil)
 
-(defun find-template (name)  
-  (loop for template in (ls *default-templates-path*)
-        if (search name (namestring template))
-          return template))
+(defun find-template (name)
+  (or (probe-file name)
+      (loop for template in (ls *default-templates-path*)
+            if (search name (namestring template))
+              return template)))
 
 (defun set-root (&optional dir)
   (handler-case 
@@ -26,6 +27,7 @@
 
 (defun scaffold (template args)  
   (with-open-file (stream template)
+    (set-binds (read-line stream nil))
     (loop for line = (read-line stream nil)
           while line
           do (make-line (parse-line line)))))
@@ -33,10 +35,9 @@
 (defun make-line (template)
   (when template
     (with-open-file (stream *file* :direction :output :if-exists :append :if-does-not-exist :create)
-      (format stream "~&~a~%" (replace-bindings template)))))
+      (write-line (replace-bindings template) stream))))
 
 (defun main (template args)
-  ;;(parse-settings)
   (set-root)
   (setf *args* args)
   (scaffold (find-template template) args))

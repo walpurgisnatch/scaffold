@@ -6,19 +6,20 @@
            :*file*
            :*project-root*
            :replace-bindings
-           :parse-line))
+           :parse-line
+           :set-binds))
 
 (in-package :scaffold.parser)
 
 (defvar *file* nil)
 (defvar *project-root* nil)
 
-(defparameter *specials* '(("#/" . in-file) ("#:" . set-binds)))
 (defparameter *args* nil)
 (defparameter *binds* nil)
 (defparameter *shapers* '(#\: #\- #\# #\<))
-(defparameter *bind-start-symbols* '(#\# #\<))
-(defparameter *bind-end-symbol* #\>)
+(defparameter *change-file-pattern* "#/")
+(defparameter *bind-start-pattern* "#<")
+(defparameter *bind-end-pattern* "#>")
 
 (defun parse-binds (binds &optional (args *args*) type result)
   (let ((bind (car binds))
@@ -36,82 +37,55 @@
           (t (nconc (assoc type result :test #'string=) (list arg))
              (parse-binds binds (cdr args) type result)))))
 
-(defun parse-args (line)
-  )
-
 (defun set-binds (binds)
   (setf *binds* (parse-binds (words binds))))
 
 (defun shaperp (char)
   (some #'(lambda (c) (char= char c)) *bind-start-symbols*))
 
-(defun end-bindp (char)
-  (char= char *bind-end-symbol*))
-
-(defun start-bindp (string)
-  (and (= 2 (length string))
-       (string= string (concatenate 'string *bind-start-symbols*))))
-
 (defun in-file (template)
   (let ((file (replace-bindings template)))
     (when (dirp file)
       (mkdir (relative-path (upper-directory file) *project-root*)))
-    (setf *file* (relative-path file *project-root*))))
+    (setf *file* (relative-path file *project-root*))
+    nil))
 
-(defun bind (word binds)
-  (let ((w (group-first "^#<(.*)>$" word)))
-    (if (and w (not-emptyp w)) (assoc-str w binds) word)))
+(defun format-stringp (string)
+  (search "#(" string))
 
-(defun format-string (beg block vars end)
-  (let* ((ident (length beg))
-        (string (cl-ppcre:regex-replace-all "~%" block (format nil "~%~va" ident " "))))
-    (concatenate 'string
-                 beg
-                 (format nil (concatenate 'string "~{" string "~}") vars)
-                 end)))
+(defun bind (var binds &optional ident)
+  (if (format-stringp var)
+      (let* ((line (string-trim '(#\Space) var))
+             (start (search "#(" line))
+             (end (search ")#" line))
+             (format-string (subseq line (+ start 2) end))
+             (vars (subseq line (+ end 3))))
+        (format-string ident format-string (assoc-str (subseq vars 1) binds)))
+      (assoc-str var binds)))
 
-;; (defun replace-bindings (string &optional (binds *binds*))
-;;   (let ((result ""))
-;;     (loop for c across string
-;;           with word = (defword)
-;;           with binded = nil
-;;           if (and (shaperp c) (< 2 (length word)))
-;;             do (vector-push-extend c word)
-;;                if (string= word (concatenate 'string *bind-end-symbol*))
-                 
-;;           else
-;;             do (progn (concat result (when (not-emptyp word) (bind word binds))
-;;                               (string c))
-;;                       (setf word (defword)))
-;;           finally (concat result (bind word binds)))
-;;     result))
+(defun format-string (ident block vars)
+  (let ((string (cl-ppcre:regex-replace-all "~%" block (format nil "~%~va" ident " "))))
+    (format nil string vars)))
 
 (defun replace-bindings (string &optional (binds *binds*))
-  (labels ((repl (list &optional result word binded)
-             (let ((c (car list)))
-               (and c (vector-push-extend c word))
-               (print word)
-               (cond ((null c) result)
-                     ((and binded (end-bindp c))
-                      (repl (cdr list) (concat result (bind word binds)) (defword)))
-                     (binded
-                      (repl (cdr list) result word t))
-                     ((and (shaperp c) (start-bindp word))
-                      (repl (cdr list) result word t))
-                     ((and (shaperp c) (< (length word) 2))
-                      (repl (cdr list) result word binded))
-                     (t (repl (cdr list) (concat result word) (defword) binded))))))
-    (repl (coerce string 'list) "" (defword))))
+  (let ((result (make-array '(0) :element-type 'base-char
+                                 :fill-pointer 0 :adjustable t))
+        (pos 0))
+    (with-output-to-string (output result)
+      (loop for start = (search *bind-start-pattern* string :start2 pos)
+            while start
+            do (let* ((end (search *bind-end-pattern* string
+                                   :start2 (+ start (length *bind-start-pattern*))))
+                      (key (subseq string (+ start (length *bind-start-pattern*)) end))
+                      (replacement (bind key binds start)))
+                 (format output "~a~a" (subseq string pos start) (or replacement ""))
+                 (setf pos (+ end 2))))
+      (write-string (subseq string pos) output))
+    result))
 
 (defun parse-line (line)
-  (let* ((l (nth-value 1 (cl-ppcre:scan-to-strings "(^.*?)\\s(.*)" line)))
-         (special (when l (cdr (assoc (elt l 0) *specials* :test #'string=))))
-         (sblock (nth-value 1 (cl-ppcre:scan-to-strings "(.*?)#<.*(~{.*?~})(.*)>#(.*)" line)))
-         (block-binds-strings (when sblock (cl-ppcre:all-matches-as-strings "&[^\\s]*" (elt sblock 2))))
-         (block-binds (loop for bind in block-binds-strings
-                            collect (cdr (assoc (subseq bind 1) *binds* :test #'string=)))))
-    (if sblock (format-string (elt sblock 0) (elt sblock 1) block-binds (elt sblock 3))
-        (if special
-            (progn (funcall special (elt l 1))
-                   nil)
-            line))))
+  (let ((file-changed (and (> (length line) (length *change-file-pattern*))
+                           (string-starts-with line *change-file-pattern*))))
+    (if file-changed
+        (in-file (subseq line (1+ (length *change-file-pattern*))))
+        line)))

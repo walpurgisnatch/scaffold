@@ -1,0 +1,13 @@
+folder name &vars &functions
+#/ predefined/functions.lisp
+
+(make-some-staff :folder #<folder#>
+   #< #(~{:~a t~^~%~})# &functions #>
+   :done t)
+
+#/ #<folder#>/#<name#>.t
+
+(create :name #<name#>
+        #< #(~{:~a~:* ~a~^~%~})# &vars #>
+        :created_at (local-time:now))
+
